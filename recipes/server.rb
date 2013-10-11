@@ -28,12 +28,18 @@ agent_manager = "#{node['ossec']['user']['dir']}/bin/ossec-batch-manager.pl"
 
 ssh_hosts = Array.new
 
-search(:node, "ossec:[* TO *] NOT role:#{node['ossec']['server_role']}") do |n|
+search(:node, "ossec:[* TO *] NOT roles:#{node['ossec']['server_role']}") do |n|
 
-  ssh_hosts << n['ipaddress'] if n['keys']
+  if n[:cloud]
+    ipaddress = n[:cloud][:public_ipv4]
+  else
+    ipaddress = n['ipaddress']
+  end
+  
+  ssh_hosts << ipaddress if n['keys']
 
-  execute "#{agent_manager} -a --ip #{n['ipaddress']} -n #{n['fqdn'][0..31]}" do
-    not_if "grep '#{n['fqdn'][0..31]} #{n['ipaddress']}' #{node['ossec']['user']['dir']}/etc/client.keys"
+  execute "#{agent_manager} -a --ip #{ipaddress} -n #{n['fqdn'][0..31]}" do
+    not_if "grep '#{n['fqdn'][0..31]} #{ipaddress}' #{node['ossec']['user']['dir']}/etc/client.keys"
   end
 
 end
@@ -47,7 +53,7 @@ template "/usr/local/bin/dist-ossec-keys.sh" do
   not_if { ssh_hosts.empty? }
 end
 
-ossec_key = data_bag_item("ossec", "ssh")
+ossec_key = Chef::EncryptedDataBagItem.load("ossec", "ssh")
 
 directory "#{node['ossec']['user']['dir']}/.ssh" do
   owner "root"
@@ -68,3 +74,4 @@ cron "distribute-ossec-keys" do
   command "/usr/local/bin/dist-ossec-keys.sh"
   only_if { ::File.exists?("#{node['ossec']['user']['dir']}/etc/client.keys") }
 end
+

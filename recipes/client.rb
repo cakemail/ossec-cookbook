@@ -22,8 +22,15 @@ ossec_server = Array.new
 if node.run_list.roles.include?(node['ossec']['server_role'])
   ossec_server << node['ipaddress']
 else
-  search(:node,"role:#{node['ossec']['server_role']}") do |n|
-    ossec_server << n['ipaddress']
+  search(:node,"roles:#{node['ossec']['server_role']}") do |n|
+    print "\n\n coucouski\n"
+    pp n
+    print "\n\n"
+    if n[:cloud]
+      ossec_server << n[:cloud][:public_ipv4]
+    else
+      ossec_server << n['ipaddress']
+    end
   end
 end
 
@@ -34,7 +41,7 @@ node.save
 
 include_recipe "ossec"
 
-ossec_key = data_bag_item("ossec", "ssh")
+ossec_key = Chef::EncryptedDataBagItem.load("ossec", "ssh")
 
 user "ossecd" do
   comment "OSSEC Distributor"
@@ -63,3 +70,4 @@ file "#{node['ossec']['user']['dir']}/etc/client.keys" do
   group "ossec"
   mode 0660
 end
+
