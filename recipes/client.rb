@@ -23,9 +23,6 @@ if node.run_list.roles.include?(node['ossec']['server_role'])
   ossec_server << node['ipaddress']
 else
   search(:node,"roles:#{node['ossec']['server_role']}") do |n|
-    print "\n\n coucouski\n"
-    pp n
-    print "\n\n"
     if n[:cloud]
       ossec_server << n[:cloud][:public_ipv4]
     else
